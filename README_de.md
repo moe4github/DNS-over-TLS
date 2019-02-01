@@ -2,13 +2,13 @@
 
 ## Motivation
 
-DNS Abfragen, zu Hostnamen, die mein lokaler DNS Server noch nicht gecached hat und Domains betreffen, die nicht in der Verwaltung meines DNS Servers liegen, gehen bislang im Klartext über das Internet zu meinen definierten Forwarders. Jeder, der Zugriff auf das öffentliche Netz und seine Knoten hat, kann somit die Anfragen sammeln und ggf. ein Profil erstellen. Um sich davor zu schützen gibt es mehrere Möglichkeiten:
+DNS Abfragen, zu Hostnamen, die der lokale DNS Server noch nicht gecached hat und Domains betreffen, die nicht in der Verwaltung des DNS Servers liegen, gehen bislang im Klartext über das Internet zu den definierten Forwarders. Jeder, der Zugriff auf das öffentliche Netz und seine Knoten hat, kann somit die Anfragen sammeln und ggf. ein Profil erstellen. Um sich davor zu schützen gibt es mehrere Möglichkeiten:
 
 * [DNSSEC](https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions)
 * [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)
 * [DNS over TLS](https://en.wikipedia.org/wiki/DNS_over_TLS)
 
-wobei ich auf den 3. Punkt, DNS over TLS, eingehen möchte. Ich will dabei nicht den gesamten lokalen DNS Server absichern (wie 1. Link), sondern nur die Anfragen der definierten Forwarders.
+wobei ich auf den 3. Punkt, **DNS over TLS**, eingehen möchte. Ich will dabei nicht den gesamten lokalen DNS Server absichern (wie 1. Link), sondern nur die Anfragen der definierten Forwarders.
 
 ## Voraussetzung
 * Bind9 DNS im eigenen privaten/lokalen LAN (Version >= 9.11)
@@ -33,6 +33,12 @@ In `/etc/stunnel/stunnel.conf` kann die Konfiguration hinterlegt werden.
     client = yes
     accept = 2053
     connect = 1.0.0.1:853
+
+Die IP Adressen 1.1.1.1 und 1.0.0.1 sind DNS Server welche von [Cloudflare](https://www.cloudflare.com/de-de/dns/) bereitgestellt werden. Der Standardport für DNS over TLS ist 853. Die Konfiguration kann wie folgt gelesen werden: Warte auf Port 1053/2053 auf Anfragen und leite diese an 1.1.1.1/1.0.0.1 als Client weiter. Somit benötige ich für jeden separaten Forwarder einen eigenen Port.
+
+    #> systemctl start stunnel4
+    #> systemctl status stunnel4
+    #> netstat -ant
 
 #### 3. Test
 
@@ -81,6 +87,8 @@ Die Konfiguration der Forwarders in */etc/bind/named.conf.options* kann jetzt wi
       ...
       
       forwarders {
+        // 1.1.1.1
+        // 1.0.0.1
         127.0.0.1 port 1053;
         127.0.0.1 port 2053;
       };
