@@ -60,6 +60,8 @@ Das oben stehende Kommando fragt nach der Adresse von *www.msn.com*. Als Ergebni
 
 Ich benutze für diese Konfiguration Linux Debian Stretch. Im Standard APT Repository ist nur Bind9 in der Version 9.10.x. verfügbar. Allerdings gibt es in den Stretch-Backports die 9.11.x Version auf die problemlos aktualisiert werden kann.
 
+Die Konfiguration der Forwarders in */etc/bind/named.conf.options* kann jetzt wie folgt angepasst werden:
+
     options {
       ...
       
