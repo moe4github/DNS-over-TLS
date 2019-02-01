@@ -12,14 +12,27 @@ wobei ich auf den 3. Punkt, DNS over TLS, eingehen möchte. Ich will dabei nicht
 
 ## Voraussetzung
 * Bind9 DNS im eigenen privaten/lokalen LAN (Version >= 9.11)
-* stunnel
+* stunnel4
 
-### stunnel
+### stunnel4
 
 #### 1. Installation
 
+    apt-get install stunnel4
+
 #### 2. Konfiguration
 
+In `/etc/stunnel/stunnel.conf` kann die Konfiguration hinterlegt werden.
+
+    [dns4-1]
+    client = yes
+    accept = 1053
+    connect = 1.1.1.1:853
+
+    [dns4-2]
+    client = yes
+    accept = 2053
+    connect = 1.0.0.1:853
 
 #### 3. Test
 
@@ -59,6 +72,8 @@ Das oben stehende Kommando fragt nach der Adresse von *www.msn.com*. Als Ergebni
 ### Bind anpassen
 
 Ich benutze für diese Konfiguration Linux Debian Stretch. Im Standard APT Repository ist nur Bind9 in der Version 9.10.x. verfügbar. Allerdings gibt es in den Stretch-Backports die 9.11.x Version auf die problemlos aktualisiert werden kann.
+
+    apt-get -t stretch-backports install bind9
 
 Die Konfiguration der Forwarders in */etc/bind/named.conf.options* kann jetzt wie folgt angepasst werden:
 
