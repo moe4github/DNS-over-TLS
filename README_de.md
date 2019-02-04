@@ -1,44 +1,113 @@
-# Bind9 Forwarders anfragen mittels TLS absichern 
+# Bind9 Forwarders Anfragen mittels TLS absichern 
 
 ## Motivation
 
 DNS Abfragen, zu Hostnamen, die der lokale DNS Server noch nicht gecached hat und Domains betreffen, die nicht in der Verwaltung des DNS Servers liegen, gehen bislang im Klartext über das Internet zu den definierten Forwarders. Jeder, der Zugriff auf das öffentliche Netz und seine Knoten hat, kann somit die Anfragen sammeln und ggf. ein Profil erstellen. Um sich davor zu schützen gibt es mehrere Möglichkeiten:
 
-* [DNSSEC](https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions)
-* [DNS over HTTPS](https://en.wikipedia.org/wiki/DNS_over_HTTPS)
-* [DNS over TLS](https://en.wikipedia.org/wiki/DNS_over_TLS)
+* [DNSSEC](https://de.wikipedia.org/wiki/Domain_Name_System_Security_Extensions) (Authentizität und Integrität aber nicht verschlüsselt)
+* [DNS over HTTPS](https://de.wikipedia.org/wiki/DNS_over_HTTPS)
+* [DNS over TLS](https://de.wikipedia.org/wiki/DNS_over_TLS)
 
-wobei ich auf den 3. Punkt, **DNS over TLS**, eingehen möchte. Ich will dabei nicht den gesamten lokalen DNS Server absichern (wie 1. Link), sondern nur die Anfragen der definierten Forwarders.
+wobei ich auf den 3. Punkt, **DNS over TLS**, eingehen möchte. Ich will dabei nicht den gesamten lokalen DNS Server absichern (wie 1. Link), sondern nur die Anfragen der definierten Forwarders, die letzen Endes das lokal Netzwerk verlassen.
 
 ## Voraussetzung
 * Bind9 DNS im eigenen privaten/lokalen LAN (Version >= 9.11)
-* stunnel4
+* [stunnel4](https://www.stunnel.org/index.html)
 
 ### stunnel4
 
+Durch stunnel kann die Kommunikation von Clients oder Server, welche selbst keine Verschlüsselung unterstützen, nachträglich verschlüsselt werden.
+
 #### 1. Installation
 
+Die Installation unter Debian *Stretch* ist mit einem einfachen
+
     apt-get install stunnel4
+    
+erledigt.
 
 #### 2. Konfiguration
 
-In `/etc/stunnel/stunnel.conf` kann die Konfiguration hinterlegt werden.
+Jetzt muss stunnel nur noch dazu gebracht werden, auf definierten Port Anfragen entgegen zu nehmen und diese, als Client, an die hinterlegten Server weiterleitet.
 
+Die Konfiguration von stunnel erfolgt in Debian Stretch unter `/etc/stunnel/stunnel.conf`. Diese wird um zwei Services, dns4-1 und dns4-2, erweitert.
+
+    ; Sample stunnel configuration file for Unix by Michal Trojnara 1998-2018
+    ; Some options used here may be inadequate for your particular configuration
+    ; This sample file does *not* represent stunnel.conf defaults
+    ; Please consult the manual for detailed description of available options
+    
+    ; **************************************************************************
+    ; * Global options                                                         *
+    ; **************************************************************************
+
+    ; It is recommended to drop root privileges if stunnel is started by root
+    setuid = stunnel4
+    setgid = stunnel4
+    
+    ; **************************************************************************
+    ; * Service definitions (remove all services for inetd mode)               *
+    ; **************************************************************************
     [dns4-1]
     client = yes
     accept = 1053
     connect = 1.1.1.1:853
+    verifyChain = yes
+    CApath = /etc/ssl/certs
+    checkHost = cloudflare-dns.com
 
     [dns4-2]
     client = yes
     accept = 2053
     connect = 1.0.0.1:853
+    verifyChain = yes
+    CApath = /etc/ssl/certs
+    checkHost = cloudflare-dns.com
 
-Die IP Adressen 1.1.1.1 und 1.0.0.1 sind DNS Server welche von [Cloudflare](https://www.cloudflare.com/de-de/dns/) bereitgestellt werden. Der Standardport für DNS over TLS ist 853. Die Konfiguration kann wie folgt gelesen werden: Warte auf Port 1053/2053 auf Anfragen und leite diese an 1.1.1.1/1.0.0.1 als Client weiter. Somit benötige ich für jeden separaten Forwarder einen eigenen Port.
+Die IP Adressen 1.1.1.1 und 1.0.0.1 sind DNS Server welche von [Cloudflare](https://www.cloudflare.com/de-de/dns/) bereitgestellt und als Forwarders genutzt werden sollen. Der Standardport für DNS over TLS ist 853. Die Konfiguration kann wie folgt gelesen werden: Warte auf Port 1053/2053 auf Anfragen und leite diese an 1.1.1.1/1.0.0.1 als Client weiter. Somit benötige ich für jeden separaten Forwarder einen eigenen Port.
 
-    #> systemctl start stunnel4
-    #> systemctl status stunnel4
-    #> netstat -ant
+Nachdem stunnel konfiguriert wurde, können die beiden Services wie folgt gestartet werden:
+
+    :~#> systemctl start stunnel4
+
+Wenn keine Fehlermeldung ausgegeben wurde, kann zusätzlich der Status des Services abgefragt werden
+
+    :~#> systemctl status stunnel4    
+        stunnel4.service - LSB: Start or stop stunnel 4.x (TLS tunnel for network daemons)
+        Loaded: loaded (/etc/init.d/stunnel4; generated; vendor preset: enabled)
+        Active: active (running) since Mon 2019-02-04 14:46:42 CET; 22min ago
+        Docs: man:systemd-sysv-generator(8)
+        Process: 24329 ExecStop=/etc/init.d/stunnel4 stop (code=exited, status=0/SUCCESS)
+        Process: 24352 ExecStart=/etc/init.d/stunnel4 start (code=exited, status=0/SUCCESS)
+        Tasks: 1 (limit: 4915)
+        ...
+        
+    Feb 04 15:08:58 dns stunnel[24367]: LOG5[663]: Service [dns4-2] connected remote server from x.x.x.x:34908
+    Feb 04 15:08:58 dns stunnel[24367]: LOG5[664]: Service [dns4-2] accepted connection from x.x.x.x:44883
+    Feb 04 15:08:58 dns stunnel[24367]: LOG5[663]: Connection closed: 73 byte(s) sent to TLS, 938 byte(s) sent to socket
+    Feb 04 15:08:58 dns stunnel[24367]: LOG5[664]: s_connect: connected 1.0.0.1:853
+    ...
+
+Eine Überprüfung mit netstat zeigt, dass die definierten Services an den konfigurierten Ports auf Anfragen warten.
+
+    :~$> netstat -ant
+    Aktive Internetverbindungen (Server und stehende Verbindungen)
+    Proto Recv-Q Send-Q Local Address           Foreign Address         State
+    ...
+    tcp        0      0 0.0.0.0:1053            0.0.0.0:*               LISTEN
+    tcp        0      0 0.0.0.0:2053            0.0.0.0:*               LISTEN
+    ...
+
+Gestoppt wird stunnel mittels
+   
+    :~#> systemctl stop stunnel4
+    
+wobei danach immer noch die Ports laut `netstat` durch stunnel belegt sind. Eine Überprüfung mit
+
+    :~$> ps -A | grep stunnel
+    24367 ?        00:00:01 stunnel4
+    
+zeigt, dass der Service noch läuft. Hier hilft ein `killall stunnel4` als root und anschließend sind die Ports auch wieder frei und stehen einem Neustart von stunnel Services nicht mehr im Weg.    
 
 #### 3. Test
 
