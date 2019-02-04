@@ -4,7 +4,7 @@
 
 DNS Abfragen, zu Hostnamen, die der lokale DNS Server noch nicht gecached hat und Domains betreffen, die nicht in der Verwaltung des DNS Servers liegen, gehen bislang im Klartext über das Internet zu den definierten Forwarders. Jeder, der Zugriff auf das öffentliche Netz und seine Knoten hat, kann somit die Anfragen sammeln und ggf. ein Profil erstellen. Um sich davor zu schützen gibt es mehrere Möglichkeiten:
 
-* [DNSSEC](https://de.wikipedia.org/wiki/Domain_Name_System_Security_Extensions) (Authentizität und Integrität aber nicht verschlüsselt)
+* [DNSSEC](https://de.wikipedia.org/wiki/Domain_Name_System_Security_Extensions) (Bietet Authentizität und Integrität aber keine Verschlüsselung)
 * [DNS over HTTPS](https://de.wikipedia.org/wiki/DNS_over_HTTPS)
 * [DNS over TLS](https://de.wikipedia.org/wiki/DNS_over_TLS)
 
